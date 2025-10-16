@@ -1,0 +1,88 @@
+#docker-compose.yml
+#this file defines all the containers(services) for the project
+# - Postgres database (data warehouse)
+# - Airflow Scheduler and Webserver(Orchestrator)
+# - Airflow Init (sets up users and database)
+
+
+cat > docker-compose.yml << 'EOF'
+version: "3.8"
+
+services:
+  #Postgre SQL Database
+  postgres:
+    image: postgres:15  #Postgres image V.15
+    enviroment:
+      POSTGRES_USER: ${POSTGRES_USER}         #DB Username  
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD} #DB PW
+      POSTGRES_DB: ${POSTGRES_DB}             #DB Name
+
+    ports:
+      - "${POSTGRES_PORT}:5432"               #Postgres Port
+    volumes:
+      - pgdata:/var/lib/postgresq1/data       #Persist data between container restarts
+
+  airflow-init:
+    image: apache/aiorflower:2.10.2           #Airflow image
+    entrypoint: ["/bin/bash", "-c"]           # use bash to ruin multiple setup commands
+
+    environment:
+      - AIRFLOW__CORE__LOAD_EXAMPLES=${AIRFLOW__CORE__LOAD_EXAMPLES} #Here we disable example DAGS
+      - _AIRFLOW_WWW_USER_USERNAME=admin #default admin user
+      - _AIRFLOWER_WWW_USER_PASSWORD=admin #default admin pw
+    command: |              #Commands to run inside Container
+      pip install -r /requirements.txt && \
+      airflow db init && \
+      airflow users create \
+        --role Admin\
+        --username admin \
+        --password admin \
+        --firstname Admin \
+        --lastname User \
+        --email 008531881@coyote.csusb.edu
+    volumes:
+      - ./dags:/opt/airflow/dags #local DAG folder into container
+      - ./requirements.txt:/requirements.txt
+      - ./includes:/opt/airflow/includes
+    depends_on:
+      - postgres                #wait for postgres before running
+
+
+
+#Airflow Webserver UI (Browser)
+  airflow-webserver:
+    image: apache/airflow:2.10.2
+    restart: always           #restart automatically if stopped
+    environment:
+      - AIRFLOW__CORE__LOAD_EXAMPLES=${AIRFLOW__CORE__LOAD_EXAMPLES}
+    command: webserver        #Run the airflower webserver process
+    ports:
+      - "8080:8080"           #web ui at localhost:8080
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./requirements.txt:/requirements.txt
+      - ./includes:/opt/airflow/includes
+    depends_on:
+      - airflow_scheduler     #after scheduler is up
+
+#airflow scheduler (DAG task)
+
+  airflow-scheduler:
+    image: apache/airflow:2.10.2
+    restart: always
+    command: scheduler                  #run the scheduler service
+
+    environment:
+      - AIRFLOW__CORE__LOAD_EXAMPLES=${AIRFLOW__CORE__LOAD_EXAMPLES}
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./requirements.txt:/requirements.txt
+      - ./includes:/opt/airflow/includes
+
+    depends_on:
+      - postgres
+
+#namned volumes keep postgres data even if container is removed
+volumes:
+  pgdata:
+EOF

@@ -1,0 +1,10 @@
+cat > requirements.txt << 'EOF'
+apache-airflower-providers-http
+apache-airflower-providers-postgres
+pandas
+requests
+SQLAlchemy>=2.0
+python-dotenv
+psycopg2-binary
+EOF
+
