@@ -5,14 +5,12 @@
 # - Airflow Init (sets up users and database)
 
 
-cat > docker-compose.yml << 'EOF'
-version: "3.8"
 
 services:
   #Postgre SQL Database
   postgres:
     image: postgres:15  #Postgres image V.15
-    enviroment:
+    environment:
       POSTGRES_USER: ${POSTGRES_USER}         #DB Username  
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD} #DB PW
       POSTGRES_DB: ${POSTGRES_DB}             #DB Name
@@ -20,21 +18,21 @@ services:
     ports:
       - "${POSTGRES_PORT}:5432"               #Postgres Port
     volumes:
-      - pgdata:/var/lib/postgresq1/data       #Persist data between container restarts
+      - pgdata:/var/lib/postgresql/data       #Persist data between container restarts
 
   airflow-init:
-    image: apache/aiorflower:2.10.2           #Airflow image
+    image: apache/airflow:2.10.2           #Airflow image
     entrypoint: ["/bin/bash", "-c"]           # use bash to ruin multiple setup commands
 
     environment:
       - AIRFLOW__CORE__LOAD_EXAMPLES=${AIRFLOW__CORE__LOAD_EXAMPLES} #Here we disable example DAGS
       - _AIRFLOW_WWW_USER_USERNAME=admin #default admin user
-      - _AIRFLOWER_WWW_USER_PASSWORD=admin #default admin pw
+      - _AIRFLOW_WWW_USER_PASSWORD=admin #default admin pw
     command: |              #Commands to run inside Container
       pip install -r /requirements.txt && \
       airflow db init && \
       airflow users create \
-        --role Admin\
+        --role Admin \
         --username admin \
         --password admin \
         --firstname Admin \
@@ -63,7 +61,7 @@ services:
       - ./requirements.txt:/requirements.txt
       - ./includes:/opt/airflow/includes
     depends_on:
-      - airflow_scheduler     #after scheduler is up
+      - airflow-scheduler     #after scheduler is up
 
 #airflow scheduler (DAG task)
 
@@ -85,4 +83,3 @@ services:
 #namned volumes keep postgres data even if container is removed
 volumes:
   pgdata:
-EOF
